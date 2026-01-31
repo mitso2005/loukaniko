@@ -1,3 +1,4 @@
+from typing import Optional
 import requests
 from app.config import WORLD_BANK_API_BASE_URL, WORLD_BANK_API_VERSION
 
@@ -26,21 +27,41 @@ def get_cpi_data(country_code: str, year_start: int, year_end: int):
     response.raise_for_status()
     return response.json()
 
-def get_cpi_historical(country_code: str, year_start: int, year_end: int):
-    list_cpi = []
+def get_historical_average_cpi(country_code: str, years: int) -> float:
+    from datetime import datetime
+    end_year = datetime.now().year - 1
+    start_year = end_year - years + 1
+    data = get_cpi_data(country_code, start_year, end_year)
+    # World Bank API returns a list, with the latest data first
+    values = []
+    if isinstance(data, list) and len(data) > 1 and isinstance(data[1], list):
+        for entry in data[1]:
+            value = entry.get('value')
+            if value is not None:
+                values.append(value)
+    if not values:
+        raise ValueError("No CPI data available for the requested period.")
+    return sum(values) / len(values)
+
+def get_cpi_for_year(country_code: str, year: int) -> Optional[float]:
+    """Get CPI value for a specific year."""
+    from app.config import WORLD_BANK_API_BASE_URL, WORLD_BANK_API_VERSION
+    import requests
+    
     url = f"{WORLD_BANK_API_BASE_URL}{WORLD_BANK_API_VERSION}/country/{country_code}/indicator/FP.CPI.TOTL"
     params = {
-        "date": f"{year_start}:{year_end}",
+        "date": str(year),
         "format": "json"
     }
     
-    response = requests.get(url, params=params)
-    response.raise_for_status()
-    data = response.json()
-    if len(data) > 1 and isinstance(data[1], list):
-        for entry in data[1]:
-            year = entry.get("date")
-            cpi_value = entry.get("value")
-            list_cpi.append({"year": year, "cpi": cpi_value})
+    try:
+        response = requests.get(url, params=params)
+        response.raise_for_status()
+        data = response.json()
         
-    return list_cpi
+        if isinstance(data, list) and len(data) > 1 and isinstance(data[1], list) and len(data[1]) > 0:
+            return data[1][0].get('value')
+    except Exception:
+        return None
+    
+    return None

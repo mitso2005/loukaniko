@@ -49,9 +49,6 @@ def get_year_average_rate(base: str, target: str, year: int) -> float:
     return sum(rates) / len(rates)
 
 def get_historical_average_rate(base: str, target: str, years: int) -> dict:
-    """
-    Returns a dict of {year: average_rate} for the last `years` years ending at current year minus 1.
-    """
     from datetime import datetime
     end_year = datetime.now().year - 1
     total = 0.0 # Sum of rates
