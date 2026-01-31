@@ -19,13 +19,13 @@ from pathlib import Path
 from datetime import datetime
 
 
-def load_world_bank_cpi_from_csv(csv_path: str, db_path: str = "market_data.db"):
+def load_world_bank_cpi_from_csv(csv_path: str, db_path: str = "data.db"):
     """
     Load World Bank CPI data from CSV into SQLite database.
     
     Args:
         csv_path: Path to the CSV file
-        db_path: Path to SQLite database (default: market_data.db)
+        db_path: Path to SQLite database (default: data.db)
     """
     print(f"Loading World Bank CPI data from {csv_path}...")
     
@@ -112,7 +112,7 @@ def load_world_bank_cpi_from_csv(csv_path: str, db_path: str = "market_data.db")
     conn.close()
 
 
-def verify_data(db_path: str = "market_data.db"):
+def verify_data(db_path: str = "data.db"):
     """Verify the loaded data with some sample queries."""
     conn = sqlite3.connect(db_path)
     cursor = conn.cursor()

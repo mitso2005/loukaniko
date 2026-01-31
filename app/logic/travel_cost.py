@@ -1,8 +1,12 @@
+import json
+import os
+
 from typing import Dict, Optional
 from datetime import datetime
 from app.services.fx import get_latest_rate, get_year_average_rate, get_historical_average_rate
 from app.services.cpi import get_latest_cpi, get_cpi_for_year, get_historical_average_cpi
 from app.utils.name_conversion import country_to_currency
+from concurrent.futures import ThreadPoolExecutor, as_completed
 
 
 def calculate_purchasing_power(
@@ -168,6 +172,80 @@ def calculate_travel_value_index_corrected(
         )
     }
     
+def rank_countries_by_travel_value(
+    base_country_code: str,
+    years: int = 20,
+    max_workers: int = 20
+):
+    countries_path = os.path.join(
+        os.path.dirname(__file__),
+        "../data/countries.json"
+    )
+
+    with open(countries_path, encoding="utf-8") as f:
+        data = json.load(f)
+
+    country_list = data.get("countries", data)
+
+    results = []
+
+    def process_country(entry):
+        target_code = entry.get("countryCode")
+
+        if not target_code:
+            print("Skipping entry with no countryCode")
+            return None
+
+        if target_code == base_country_code:
+            print(f"Skipping {target_code}: base country")
+            return None
+
+        try:
+            res = calculate_travel_value_index_corrected(
+                base_country_code,
+                target_code,
+                years
+            )
+
+            value = res.get("travel_value_index")
+            if value is None:
+                print(f"Skipping {target_code}: travel_value_index is None")
+                return None
+
+            # ✅ SUCCESS LOG
+            status = "cheap" if value > 1 else "expensive"
+            print(
+                f"✔ {target_code} recorded: "
+                f"travel_value_index={value:.3f} ({status})"
+            )
+
+            return {
+                "country_code": target_code,
+                "travel_value_index": value
+            }
+
+        except Exception as e:
+            print(f"Skipping {target_code}: {e}")
+            return None
+
+    with ThreadPoolExecutor(max_workers=max_workers) as executor:
+        futures = [
+            executor.submit(process_country, entry)
+            for entry in country_list
+        ]
+
+        for future in as_completed(futures):
+            result = future.result()
+            if result:
+                results.append(result)
+
+    results.sort(
+        key=lambda x: x["travel_value_index"],
+        reverse=True
+    )
+
+    return results
+
     
     
     def debug_travel_value(base_country: str, target_country: str):
