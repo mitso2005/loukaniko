@@ -167,3 +167,24 @@ def calculate_travel_value_index_corrected(
             f"{abs(pct_vs_historical):.1f}% compared to {years}-year average"
         )
     }
+    
+    
+    
+    def debug_travel_value(base_country: str, target_country: str):
+        base_currency = country_to_currency(base_country)
+        target_currency = country_to_currency(target_country)
+        
+        fx_current = get_latest_rate(base_currency, target_currency)
+        fx_avg = get_historical_average_rate(base_currency, target_currency, 20)
+        
+        cpi_current = get_latest_cpi(target_country)
+        cpi_avg = get_historical_average_cpi(target_country, 20)
+        
+        print(f"\n{base_country} -> {target_country}")
+        print(f"Currency pair: {base_currency}/{target_currency}")
+        print(f"FX Current: {fx_current}")
+        print(f"FX 20yr Avg: {fx_avg}")
+        print(f"CPI Current: {cpi_current}")
+        print(f"CPI 20yr Avg: {cpi_avg}")
+        print(f"Current PP: {fx_current / cpi_current}")
+        print(f"Historical PP: {fx_avg / cpi_avg}")

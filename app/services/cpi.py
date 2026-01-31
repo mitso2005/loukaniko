@@ -1,6 +1,12 @@
 from typing import Optional
 import requests
 from app.config import WORLD_BANK_API_BASE_URL, WORLD_BANK_API_VERSION
+from world_bank_cpi_helpers import (
+    get_latest_cpi,
+    get_cpi_for_year,
+    get_historical_average_cpi,
+    get_available_countries
+)
 
 def get_latest_cpi(country_code: str):
     url = f"{WORLD_BANK_API_BASE_URL}{WORLD_BANK_API_VERSION}/country/{country_code}/indicator/FP.CPI.TOTL"

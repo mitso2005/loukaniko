@@ -1,0 +1,3 @@
+from app.services.world_bank_cpi_helpers import get_database_stats
+
+get_database_stats
