@@ -17,7 +17,7 @@ async def root():
             }
 
 @app.get("/currencies")
-def get_supported_currencies():
+def currencies_endpoint():
     return get_supported_currencies()
 
 @app.get("/travel-value-rankings/{country_code}")
