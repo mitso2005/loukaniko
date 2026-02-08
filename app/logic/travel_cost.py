@@ -3,7 +3,7 @@ import os
 
 from typing import Dict, Optional
 from datetime import datetime
-from app.services.fx import get_latest_rate, get_year_average_rate, get_historical_average_rate
+from app.services.fx import get_latest_rate, get_year_average_rate, get_historical_average_rate, get_supported_currencies
 from app.services.cpi import get_latest_cpi, get_cpi_for_year, get_historical_average_cpi
 from app.utils.name_conversion import country_to_currency
 from concurrent.futures import ThreadPoolExecutor, as_completed
@@ -186,6 +186,7 @@ def rank_countries_by_travel_value(
         data = json.load(f)
 
     country_list = data.get("countries", data)
+    supported_currencies = get_supported_currencies()
 
     results = []
 
@@ -198,6 +199,12 @@ def rank_countries_by_travel_value(
 
         if target_code == base_country_code:
             print(f"Skipping {target_code}: base country")
+            return None
+
+        # Check if country's currency is supported
+        target_currency = country_to_currency(target_code)
+        if not target_currency or target_currency not in supported_currencies:
+            print(f"Skipping {target_code}: currency {target_currency} not supported")
             return None
 
         try:
