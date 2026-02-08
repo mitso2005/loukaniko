@@ -1,6 +1,6 @@
-- [**API Root**](https://loukaniko-api.onrender.com/)
-- [**Interactive Docs (Swagger)**](https://loukaniko-api.onrender.com/docs)
-- [**ReDoc**](https://loukaniko-api.onrender.com/redoc)
+- [**API Root**](https://loukaniko.onrender.com/)
+- [**Interactive Docs (Swagger)**](https://loukaniko.onrender.com/docs)
+- [**ReDoc**](https://loukaniko.onrender.com/redoc)
 
 #Limitations
 - Only works for ~80 differnet countries due to the limited free fx rates I have access to.
