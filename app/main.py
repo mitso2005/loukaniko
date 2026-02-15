@@ -62,6 +62,30 @@ async def get_all_stats():
         }
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Error retrieving statistics: {str(e)}")
+    
+@app.get("/supported")
+async def get_supported_countries_and_currencies():
+    """
+    Returns countries with both CPI data AND supported currency in FX database.
+    Only includes the intersection of countries with CPI data and available FX rates.
+    """
+    try:
+        cpi_countries = get_available_countries()
+        supported_currencies = get_supported_currencies()
+
+        available_countries = [
+            country
+            for country in cpi_countries
+            if (country_code := country.get("code"))
+            and (currency := country_to_currency(country_code))
+            and currency in supported_currencies
+        ]
+
+        return available_countries
+    except Exception as e:
+        raise HTTPException(
+            status_code=500, detail=f"Error retrieving available countries: {str(e)}"
+        )
 
 
 # ============================================================================
@@ -125,36 +149,9 @@ async def get_country_names():
             status_code=500, detail=f"Error retrieving country details: {str(e)}"
         )
 
-
-@app.get("/countries/available")
-async def get_available_countries():
-    """
-    Returns countries with both CPI data AND supported currency in FX database.
-    Only includes the intersection of countries with CPI data and available FX rates.
-    """
-    try:
-        cpi_countries = get_available_countries()
-        supported_currencies = get_supported_currencies()
-
-        available_countries = [
-            country
-            for country in cpi_countries
-            if (country_code := country.get("code"))
-            and (currency := country_to_currency(country_code))
-            and currency in supported_currencies
-        ]
-
-        return available_countries
-    except Exception as e:
-        raise HTTPException(
-            status_code=500, detail=f"Error retrieving available countries: {str(e)}"
-        )
-
-
 # ============================================================================
 # Currency Endpoints
 # ============================================================================
-
 
 @app.get("/currencies")
 async def get_avaliable_currencies():
