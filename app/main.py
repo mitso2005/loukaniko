@@ -30,6 +30,57 @@ async def root():
             "version": "v1", 
             }
 
+@app.get("/travel-value-rankings/{country_code}")
+async def get_travel_value_index_ranked(country_code: str):
+    try:
+        results = rank_countries_by_travel_value(country_code)
+        if not results:
+            raise HTTPException(status_code=404, detail=f"No travel value data found for country: {country_code}")
+        return results
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Error calculating travel value rankings: {str(e)}")
+
+@app.get("/travel-value-index/{base_country_code}/{target_country_code}")
+async def get_travel_value_index(base_country_code: str, target_country_code: str, years: int = 20):
+    """
+    Calculates the travel value index between a base and target country.
+    """
+    try:
+        result = calculate_travel_value_index_corrected(base_country_code, target_country_code, years)
+        return result
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Error calculating travel value index: {str(e)}")
+
+@app.get("/countries/available")
+async def get_countries_with_cpi_and_fx_data():
+    """
+    Returns countries that have both CPI data AND supported currency in FX database.
+    Only includes the intersection of countries with CPI data and currencies available in FX rates.
+    """
+    try:
+        # Get countries with CPI data
+        cpi_countries = get_available_countries()
+        
+        # Get supported currencies
+        supported_currencies = get_supported_currencies()
+        
+        # Filter to only include countries whose currency is supported
+        available_countries = []
+        for country in cpi_countries:
+            country_code = country.get('code')
+            if country_code:
+                currency = country_to_currency(country_code)
+                if currency and currency in supported_currencies:
+                    available_countries.append(country)
+        
+        return available_countries
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Error retrieving available countries: {str(e)}")
+
 @app.get("/currencies")
 def currencies_endpoint():
     try:
@@ -75,31 +126,6 @@ async def get_countries_details():
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Error retrieving country details: {str(e)}")
 
-@app.get("/travel-value-rankings/{country_code}")
-async def get_travel_value_index_ranked(country_code: str):
-    try:
-        results = rank_countries_by_travel_value(country_code)
-        if not results:
-            raise HTTPException(status_code=404, detail=f"No travel value data found for country: {country_code}")
-        return results
-    except HTTPException:
-        raise
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Error calculating travel value rankings: {str(e)}")
-
-@app.get("/travel-value-index/{base_country_code}/{target_country_code}")
-async def get_travel_value_index(base_country_code: str, target_country_code: str, years: int = 20):
-    """
-    Calculates the travel value index between a base and target country.
-    """
-    try:
-        result = calculate_travel_value_index_corrected(base_country_code, target_country_code, years)
-        return result
-    except ValueError as e:
-        raise HTTPException(status_code=400, detail=str(e))
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Error calculating travel value index: {str(e)}")
-
 @app.get("/fx/latest/{base_currency}/{target_currency}")
 async def get_fx_rate(base_currency: str, target_currency: str):
     """
@@ -131,32 +157,6 @@ async def get_cpi(country_code: str):
         raise HTTPException(status_code=500, detail=f"Error retrieving CPI: {str(e)}")
 
 
-@app.get("/countries/available")
-async def get_countries_with_cpi_and_fx_data():
-    """
-    Returns countries that have both CPI data AND supported currency in FX database.
-    Only includes the intersection of countries with CPI data and currencies available in FX rates.
-    """
-    try:
-        # Get countries with CPI data
-        cpi_countries = get_available_countries()
-        
-        # Get supported currencies
-        supported_currencies = get_supported_currencies()
-        
-        # Filter to only include countries whose currency is supported
-        available_countries = []
-        for country in cpi_countries:
-            country_code = country.get('code')
-            if country_code:
-                currency = country_to_currency(country_code)
-                if currency and currency in supported_currencies:
-                    available_countries.append(country)
-        
-        return available_countries
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Error retrieving available countries: {str(e)}")
-
 @app.get("/fx/historical/{base_currency}/{target_currency}")
 async def get_fx_historical(base_currency: str, target_currency: str, years: int = Query(20, description="Number of years to average")):
     """
@@ -176,26 +176,6 @@ async def get_fx_historical(base_currency: str, target_currency: str, years: int
         raise
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Error retrieving historical FX rate: {str(e)}")
-
-@app.get("/fx/year/{base_currency}/{target_currency}/{year}")
-async def get_fx_year(base_currency: str, target_currency: str, year: int):
-    """
-    Returns the average FX rate for a specific year.
-    """
-    try:
-        rate = get_year_average_rate(base_currency.upper(), target_currency.upper(), year)
-        if rate is None:
-            raise HTTPException(status_code=404, detail=f"FX data not found for {base_currency}/{target_currency} in {year}")
-        return {
-            "base_currency": base_currency.upper(),
-            "target_currency": target_currency.upper(),
-            "year": year,
-            "average_rate": rate
-        }
-    except HTTPException:
-        raise
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Error retrieving FX rate for year: {str(e)}")
 
 @app.get("/cpi/historical/{country_code}")
 async def get_cpi_historical(country_code: str, years: int = Query(20, description="Number of years to average")):
