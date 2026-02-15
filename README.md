@@ -4,6 +4,11 @@ A REST API that calculates **travel value indexes** to help you find the best va
 
 Use this to answer questions like: "Which countries give me the most bang for my buck?"
 
+## Links
+- [**API Root**](https://loukaniko.onrender.com/)
+- [**Interactive Docs (Swagger)**](https://loukaniko.onrender.com/docs)
+- [**ReDoc**](https://loukaniko.onrender.com/redoc)
+
 ## Methodology
 
 The travel value index uses the **Real Exchange Rate** formula, which adjusts nominal exchange rates for inflation differences between countries:
@@ -29,11 +34,6 @@ Travel Value Index = Real FX Current / Real FX Historical Average
 - **Relative measure**: By using ratios rather than absolute values, the index works across any currency pair and accounts for CPI base year differences.
 
 This approach is grounded in economic theory (Purchasing Power Parity) and is sufficient for travel planning because it captures the two key factors that determine your actual spending power abroad: exchange rates and local price levels.
-
-## Links
-- [**API Root**](https://loukaniko.onrender.com/)
-- [**Interactive Docs (Swagger)**](https://loukaniko.onrender.com/docs)
-- [**ReDoc**](https://loukaniko.onrender.com/redoc)
 
 ## Limitations
 - Only works for ~80 different countries due to the limited free FX rates available.
