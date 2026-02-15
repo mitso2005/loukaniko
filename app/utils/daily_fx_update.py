@@ -11,17 +11,16 @@ from pathlib import Path
 root = Path(__file__).parent.parent.parent
 sys.path.insert(0, str(root))
 
-from scripts.load_ecb_fx_data import update_latest_rates
+from app.scripts.load_ecb_fx_data import update_latest_rates
 
 if __name__ == "__main__":
     print("Starting daily FX update...")
-    
+
     # Database path
-    db_path = root / "app" / "db" / "market_data.db"
-    
+    db_path = root / "app" / "db" / "data.db"
+
     try:
         update_latest_rates(str(db_path))
         print("✅ FX rates updated successfully!")
     except Exception as e:
         print(f"❌ Error updating FX rates: {e}")
-        # Optionally: send alert email, log to monitoring service, etc.

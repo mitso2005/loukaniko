@@ -113,29 +113,9 @@ async def get_travel_value_index(
 # Countries Endpoints
 # ============================================================================
 
-
 @app.get("/countries")
-async def get_countries():
-    """Returns a simple list of country codes and names."""
-    try:
-        data = load_countries_data()
-        countries_list = data.get("countries", [])
-        return [
-            {
-                "countryCode": country["countryCode"],
-                "country": country["country"],
-            }
-            for country in countries_list
-        ]
-    except FileNotFoundError:
-        raise HTTPException(status_code=500, detail="Countries data file not found")
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Error retrieving countries: {str(e)}")
-
-
-@app.get("/countries/details")
-async def get_countries_details():
-    """Returns complete country information including currency details."""
+async def get_country_names():
+    """Returns complete country name, country code, currency and currency code."""
     try:
         return load_countries_data()
     except FileNotFoundError:
@@ -147,7 +127,7 @@ async def get_countries_details():
 
 
 @app.get("/countries/available")
-async def get_available_countries_endpoint():
+async def get_available_countries():
     """
     Returns countries with both CPI data AND supported currency in FX database.
     Only includes the intersection of countries with CPI data and available FX rates.
@@ -177,21 +157,12 @@ async def get_available_countries_endpoint():
 
 
 @app.get("/currencies")
-async def get_currencies():
+async def get_avaliable_currencies():
     """Returns list of supported currencies."""
     try:
         return get_supported_currencies()
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Error retrieving currencies: {str(e)}")
-
-@app.get("/currencies")
-async def get_currencies():
-    """Returns list of supported currencies."""
-    try:
-        return get_supported_currencies()
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Error retrieving currencies: {str(e)}")
-
 
 # ============================================================================
 # FX Rate Endpoints
@@ -199,7 +170,7 @@ async def get_currencies():
 
 
 @app.get("/fx/latest/{base_currency}/{target_currency}")
-async def get_fx_rate(base_currency: str, target_currency: str):
+async def get_fx_latest(base_currency: str, target_currency: str):
     """Returns the latest FX rate between two currencies."""
     try:
         rate = get_latest_rate(base_currency.upper(), target_currency.upper())
