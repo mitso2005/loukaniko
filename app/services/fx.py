@@ -13,11 +13,16 @@ import sqlite3
 from typing import Optional, List, Dict
 from datetime import datetime, timedelta
 from pathlib import Path
+from functools import lru_cache
 
 
 DB_PATH = Path("app/db/data.db")
 
+# Cache for supported currencies to avoid repeated DB lookups
+_supported_currencies_cache = None
 
+
+@lru_cache(maxsize=512)
 def get_latest_rate(base: str, target: str, db_path: str = None) -> Optional[float]:
     """
     Get the most recent exchange rate from base to target currency.
@@ -40,6 +45,8 @@ def get_latest_rate(base: str, target: str, db_path: str = None) -> Optional[flo
         1.1919
         >>> get_latest_rate('AUD', 'JPY')
         107.99
+    
+    Note: Results are cached for performance.
     """
     if db_path is None:
         db_path = DB_PATH
@@ -204,29 +211,58 @@ def get_year_average_rate(base: str, target: str, year: int, db_path: str = None
     conn = sqlite3.connect(db_path)
     cursor = conn.cursor()
     
-    # Get all dates in the year
-    cursor.execute("""
-        SELECT DISTINCT date FROM fx_rates
-        WHERE date LIKE ? || '%'
-        ORDER BY date
-    """, (str(year),))
+    # Calculate average directly in SQL for EUR-based rates
+    if base == 'EUR':
+        cursor.execute("""
+            SELECT AVG(rate) FROM fx_rates
+            WHERE base_currency = 'EUR' AND target_currency = ? 
+            AND date LIKE ? || '%'
+        """, (target, str(year)))
+        
+        result = cursor.fetchone()
+        conn.close()
+        return result[0] if result and result[0] else None
     
-    dates = [row[0] for row in cursor.fetchall()]
-    conn.close()
-    
-    if not dates:
+    elif target == 'EUR':
+        cursor.execute("""
+            SELECT AVG(rate) FROM fx_rates
+            WHERE base_currency = 'EUR' AND target_currency = ? 
+            AND date LIKE ? || '%'
+        """, (base, str(year)))
+        
+        result = cursor.fetchone()
+        conn.close()
+        
+        if result and result[0]:
+            return 1.0 / result[0]
         return None
     
-    # Calculate average across all dates
-    rates = []
-    for date in dates:
-        rate = get_rate_for_date(base, target, date, db_path)
-        if rate is not None:
-            rates.append(rate)
-    
-    return sum(rates) / len(rates) if rates else None
+    else:
+        # For cross-currency, get averages of both EUR pairs
+        cursor.execute("""
+            SELECT AVG(rate) FROM fx_rates
+            WHERE base_currency = 'EUR' AND target_currency = ? 
+            AND date LIKE ? || '%'
+        """, (base, str(year)))
+        eur_to_base_avg = cursor.fetchone()
+        
+        cursor.execute("""
+            SELECT AVG(rate) FROM fx_rates
+            WHERE base_currency = 'EUR' AND target_currency = ? 
+            AND date LIKE ? || '%'
+        """, (target, str(year)))
+        eur_to_target_avg = cursor.fetchone()
+        
+        conn.close()
+        
+        if eur_to_base_avg and eur_to_target_avg and eur_to_base_avg[0] and eur_to_target_avg[0]:
+            # Base -> Target = (1 / EUR -> Base) * (EUR -> Target)
+            return (1.0 / eur_to_base_avg[0]) * eur_to_target_avg[0]
+        
+        return None
 
 
+@lru_cache(maxsize=512)
 def get_historical_average_rate(base: str, target: str, years: int, db_path: str = None) -> Optional[float]:
     """
     Get average exchange rate over the last N years.
@@ -239,18 +275,73 @@ def get_historical_average_rate(base: str, target: str, years: int, db_path: str
     
     Returns:
         Average rate over period, or None if insufficient data
+    
+    Note: Results are cached for performance.
     """
+    if db_path is None:
+        db_path = DB_PATH
+    
+    base = base.upper()
+    target = target.upper()
+    
+    if base == target:
+        return 1.0
+    
     end_year = datetime.now().year - 1
     start_year = end_year - years + 1
     
-    yearly_averages = []
+    conn = sqlite3.connect(db_path)
+    cursor = conn.cursor()
     
-    for year in range(start_year, end_year + 1):
-        avg = get_year_average_rate(base, target, year, db_path)
-        if avg is not None:
-            yearly_averages.append(avg)
+    # Calculate average directly in SQL across all years
+    if base == 'EUR':
+        cursor.execute("""
+            SELECT AVG(rate) FROM fx_rates
+            WHERE base_currency = 'EUR' AND target_currency = ? 
+            AND CAST(SUBSTR(date, 1, 4) AS INTEGER) BETWEEN ? AND ?
+        """, (target, start_year, end_year))
+        
+        result = cursor.fetchone()
+        conn.close()
+        return result[0] if result and result[0] else None
     
-    return sum(yearly_averages) / len(yearly_averages) if yearly_averages else None
+    elif target == 'EUR':
+        cursor.execute("""
+            SELECT AVG(rate) FROM fx_rates
+            WHERE base_currency = 'EUR' AND target_currency = ? 
+            AND CAST(SUBSTR(date, 1, 4) AS INTEGER) BETWEEN ? AND ?
+        """, (base, start_year, end_year))
+        
+        result = cursor.fetchone()
+        conn.close()
+        
+        if result and result[0]:
+            return 1.0 / result[0]
+        return None
+    
+    else:
+        # For cross-currency, get averages of both EUR pairs
+        cursor.execute("""
+            SELECT AVG(rate) FROM fx_rates
+            WHERE base_currency = 'EUR' AND target_currency = ? 
+            AND CAST(SUBSTR(date, 1, 4) AS INTEGER) BETWEEN ? AND ?
+        """, (base, start_year, end_year))
+        eur_to_base_avg = cursor.fetchone()
+        
+        cursor.execute("""
+            SELECT AVG(rate) FROM fx_rates
+            WHERE base_currency = 'EUR' AND target_currency = ? 
+            AND CAST(SUBSTR(date, 1, 4) AS INTEGER) BETWEEN ? AND ?
+        """, (target, start_year, end_year))
+        eur_to_target_avg = cursor.fetchone()
+        
+        conn.close()
+        
+        if eur_to_base_avg and eur_to_target_avg and eur_to_base_avg[0] and eur_to_target_avg[0]:
+            # Base -> Target = (1 / EUR -> Base) * (EUR -> Target)
+            return (1.0 / eur_to_base_avg[0]) * eur_to_target_avg[0]
+        
+        return None
 
 
 def get_supported_currencies(db_path: str = None) -> List[str]:
@@ -259,7 +350,15 @@ def get_supported_currencies(db_path: str = None) -> List[str]:
     
     Returns:
         List of currency codes
+    
+    Note: Results are cached for the default database path.
     """
+    global _supported_currencies_cache
+    
+    # Use cache for default db_path
+    if db_path is None and _supported_currencies_cache is not None:
+        return _supported_currencies_cache
+    
     if db_path is None:
         db_path = DB_PATH
     
@@ -275,6 +374,10 @@ def get_supported_currencies(db_path: str = None) -> List[str]:
     
     currencies = [row[0] for row in cursor.fetchall()]
     conn.close()
+    
+    # Cache result for default db_path
+    if db_path == DB_PATH:
+        _supported_currencies_cache = currencies
     
     return currencies
 

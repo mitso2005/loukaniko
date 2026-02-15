@@ -9,12 +9,14 @@ import sqlite3
 from typing import Optional, List, Dict
 from datetime import datetime
 from pathlib import Path
+from functools import lru_cache
 
 
 # Default database path
 DB_PATH = Path("app/db/data.db")
 
 
+@lru_cache(maxsize=256)
 def get_latest_cpi(country_code: str, db_path: str = None) -> Optional[float]:
     if db_path is None:
         db_path = DB_PATH
@@ -71,6 +73,7 @@ def get_cpi_for_year(country_code: str, year: int, db_path: str = None) -> Optio
     return result[0] if result else None
 
 
+@lru_cache(maxsize=512)
 def get_historical_average_cpi(country_code: str, years: int = 20, db_path: str = None) -> Optional[float]:
     """
     Get average CPI over the last N years.
@@ -86,6 +89,8 @@ def get_historical_average_cpi(country_code: str, years: int = 20, db_path: str 
     Example:
         >>> get_historical_average_cpi('AUS', 20)
         105.47
+    
+    Note: Results are cached for performance.
     """
     if db_path is None:
         db_path = DB_PATH
